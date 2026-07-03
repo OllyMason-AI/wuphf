@@ -398,7 +398,7 @@ function errorCodeFromBodyText(bodyText: string): string | null {
 
 export function sseURL(path: string): string {
   let url = baseURL() + path;
-  if (!useProxy && token) url += `?token=${encodeURIComponent(token)}`;
+  if (token) url += `${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`;
   return url;
 }
 

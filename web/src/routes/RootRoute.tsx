@@ -50,6 +50,21 @@ import {
   useCurrentRoute,
 } from "./useCurrentRoute";
 
+type OnboardingBootState = {
+  onboarded?: boolean;
+  phase?: string;
+};
+
+async function loadOnboardingState(): Promise<OnboardingBootState> {
+  try {
+    return await get<OnboardingBootState>("/onboarding/state");
+  } catch (primaryErr) {
+    const fallback = await fetch("/onboarding/state");
+    if (!fallback.ok) throw primaryErr;
+    return (await fallback.json()) as OnboardingBootState;
+  }
+}
+
 // Sentinel routeId for the root match — TanStack Router exposes this as
 // `__root__`. Imported via `rootRoute.id` so a future TanStack rename
 // surfaces as a single broken reference instead of a silent string-match
@@ -968,9 +983,7 @@ export default function RootRoute() {
       .then(() => {
         if (cancelled) return;
         setBrokerConnected(true);
-        return get<{ onboarded?: boolean; phase?: string }>(
-          "/onboarding/state",
-        );
+        return loadOnboardingState();
       })
       .then((s) => {
         if (cancelled || !s) return;
