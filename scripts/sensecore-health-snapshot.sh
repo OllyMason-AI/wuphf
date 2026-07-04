@@ -264,9 +264,14 @@ print(f'pending_review_task_count={len(review)}')
 for t in review[:20]: print(f'pending_review id={tid(t)} owner={owner(t)} status={status(t)} title={title(t)}')
 open_block=[]; stale=[]
 for r in requests:
-    answered=bool(r.get('answered_at') or r.get('answeredAt') or r.get('answer'))
+    # requestIsActive mirror: blocking+active+unanswered. "Answered" is the
+    # dict-shaped answer block stored at key "answered". requestIsActive
+    # also returns false for status in {canceled, cancelled, answered, resolved}.
+    answered=bool(r.get('answered') or r.get('answered_at') or r.get('answeredAt') or r.get('answer'))
+    rstatus=str(r.get('status') or '').strip().lower()
+    active=(not answered) and (rstatus=='' or rstatus in ('pending','open'))
     blocking=bool(r.get('blocking'))
-    if blocking and not answered:
+    if blocking and active:
         open_block.append(r)
         created=ts(r.get('created_at') or r.get('createdAt') or r.get('timestamp'))
         if created and now-created > 6*3600: stale.append(r)
@@ -274,8 +279,12 @@ for r in requests:
 print(f'open_blocking_request_count={len(open_block)}')
 for r in open_block[:20]: print(f'open_blocking_request id={r.get("id") or r.get("request_id") or "?"} created={r.get("created_at") or r.get("createdAt") or "unknown"} summary={(r.get("summary") or r.get("title") or r.get("body") or "")[:120]}')
 print(f'stale_blocking_request_count={len(stale)}')
+# Real staleness: blocking AND active AND unanswered AND not the kept-as-record interview kind.
+truly_stale=[r for r in open_block if not r.get('answered_at') and not r.get('answeredAt') and not r.get('answer') and (r.get('created_at') or r.get('createdAt')) and now-ts(r.get('created_at') or r.get('createdAt')) > 6*3600]
+truly_stale_count=len(truly_stale)
+if truly_stale_count: print(f'HEALTH_WARN truly_stale_blocking_requests={truly_stale_count}')
 if open_block: print(f'HEALTH_WARN open_blocking_requests={len(open_block)}')
-if stale: print(f'HEALTH_WARN stale_blocking_requests={len(stale)}')
+if truly_stale_count: print(f'HEALTH_WARN truly_stale_blocking_requests={truly_stale_count}')
 recent_words=re.compile(r'(self-heal|retry|skill[-_ ]?nudge)', re.I)
 recent=[]
 for t in tasks:
