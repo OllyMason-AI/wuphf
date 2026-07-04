@@ -298,6 +298,9 @@ func configureServerTools(server *mcp.Server, slug string, channel string, oneOn
 	}
 	registerContextTools(server)
 	registerSharedMemoryTools(server)
+	if isResearchAgent(slug) {
+		registerWebResearchTools(server)
+	}
 
 	mcp.AddTool(server, readOnlyTool(
 		"team_requests",
